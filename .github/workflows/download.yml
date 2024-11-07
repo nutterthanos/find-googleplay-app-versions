@@ -19,7 +19,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install asyncio aiohttp re
+          pip install asyncio aiohttp
 
       - name: Run download.py
         env:
