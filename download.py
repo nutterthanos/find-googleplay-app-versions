@@ -6,15 +6,18 @@ from google.protobuf import json_format
 import response_pb2  # This is the compiled Protobuf file
 import re
 import os
+import sys
 
 # Replace these with your actual values
 app_id = "com.amadeus.merci.client.ui"
 auth_token = os.getenv("AUTH_TOKEN")
-dtok = "AB-xQnqb8f6MCIIKRx_QFF--uBBTYeBYrc0iXFYtHLVYuV1L40fZ_OK-13dNZjKn2ZBRm8tvcWLgcNvGvBtX4y8tLk80ExlcKzAkAkQy5RWQvVcai8Ry_Zws1BZtuTUdjLJxFMfItYwkXCXjNHMrpgjhxY4VShomfOBGdesUzZQpCXkAzgrBx7o"
-
-# Ensure app_id directory exists
 output_dir = os.path.join("apps", app_id)
 os.makedirs(output_dir, exist_ok=True)
+
+# Ensure token is present
+if not auth_token:
+    print("Error: AUTH_TOKEN environment variable is missing.")
+    sys.exit(1)
 
 # Retry configuration
 max_retries = 1000
@@ -56,6 +59,21 @@ def parse_protobuf_message(message_data):
     except Exception as e:
         print("Failed to decode Protobuf message:", e)
         return None
+    
+# Helper function to check if the token is valid by testing a known version
+async def test_auth_token(session):
+    url = f"https://play-fe.googleapis.com/fdfe/delivery?doc={app_id}&ot=1&vc=1"
+    async with session.get(url) as response:
+        if response.status == 200:
+            response_data = await response.read()
+            
+            # Check if the response contains an HTTP/HTTPS URL, indicating a valid response
+            if re.search(rb'https?://', response_data):
+                print("Auth token is valid.")
+                return True
+            else:
+                print("Auth token might be expired or invalid - no URL found in response.")
+                return False
 
 # Async function to handle each request with retry logic
 async def fetch_and_save(session, url, vc, semaphore):
@@ -116,13 +134,15 @@ async def main():
 
     # Timeout for the ClientSession to handle long response times
     timeout = aiohttp.ClientTimeout(total=30)  # 30 seconds
-    
-    async with aiohttp.ClientSession(headers=headers) as session:
+
+    async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
+        if not await test_auth_token(session):
+            print("Error: The auth token might have expired. Exiting.")
+            return
         tasks = []
         for vc in range(version_code_start, version_code_end + 1):
             url = f"https://play-fe.googleapis.com/fdfe/delivery?doc={app_id}&ot=1&vc={vc}"
             tasks.append(fetch_and_save(session, url, vc, semaphore))
-        
         await asyncio.gather(*tasks)
 
 # Run the async main function
