@@ -131,8 +131,8 @@ async def fetch_and_save(session, url, vc, semaphore):
 
 # Main async function
 async def main():
-    version_code_start = 1000000
-    version_code_end = 1500000
+    version_code_start = 0
+    version_code_end = 500000
     max_concurrent_requests = 1000
     semaphore = asyncio.Semaphore(max_concurrent_requests)
 
@@ -142,7 +142,7 @@ async def main():
     async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
         if not await test_auth_token(session):
             print("Error: The auth token might have expired or is invalid. Exiting.")
-            return
+            sys.exit(1)  # Exit with code 1 to signal failure
         tasks = []
         for vc in range(version_code_start, version_code_end + 1):
             url = f"https://play-fe.googleapis.com/fdfe/delivery?doc={app_id}&ot=1&vc={vc}"
@@ -150,4 +150,10 @@ async def main():
         await asyncio.gather(*tasks)
 
 # Run the async main function
-asyncio.run(main())
+try:
+    asyncio.run(main())
+except SystemExit as e:
+    sys.exit(e.code)  # Ensure exit code is propagated
+except Exception as e:
+    print(f"Unexpected error occurred: {e}")
+    sys.exit(1)  # Exit with code 1 for unexpected errors
