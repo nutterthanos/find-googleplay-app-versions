@@ -60,20 +60,24 @@ def parse_protobuf_message(message_data):
         print("Failed to decode Protobuf message:", e)
         return None
     
-# Helper function to check if the token is valid by testing a known version
+# Helper function to check if the token is valid using the OAuth endpoint
 async def test_auth_token(session):
-    url = f"https://play-fe.googleapis.com/fdfe/delivery?doc={app_id}&ot=1&vc=1"
+    url = f"https://oauth2.googleapis.com/tokeninfo?access_token={auth_token}"
     async with session.get(url) as response:
         if response.status == 200:
-            response_data = await response.read()
-            
-            # Check if the response contains an HTTP/HTTPS URL, indicating a valid response
-            if re.search(rb'https?://', response_data):
-                print("Auth token is valid.")
-                return True
-            else:
-                print("Auth token might be expired or invalid - no URL found in response.")
+            print("Auth token is valid.")
+            return True
+        elif response.status == 400:  # Handle invalid token response
+            response_data = await response.json()
+            if response_data.get("error") == "invalid_token":
+                print("Error: Auth token is invalid or expired.")
                 return False
+            else:
+                print("Unexpected response while validating auth token:", response_data)
+                return False
+        else:
+            print(f"Unexpected status code during token validation: {response.status}")
+            return False
 
 # Async function to handle each request with retry logic
 async def fetch_and_save(session, url, vc, semaphore):
@@ -127,9 +131,9 @@ async def fetch_and_save(session, url, vc, semaphore):
 
 # Main async function
 async def main():
-    version_code_start = 590500000
-    version_code_end = 591000000
-    max_concurrent_requests = 100
+    version_code_start = 0
+    version_code_end = 500000
+    max_concurrent_requests = 1000
     semaphore = asyncio.Semaphore(max_concurrent_requests)
 
     # Timeout for the ClientSession to handle long response times
@@ -137,7 +141,7 @@ async def main():
 
     async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
         if not await test_auth_token(session):
-            print("Error: The auth token might have expired. Exiting.")
+            print("Error: The auth token might have expired or is invalid. Exiting.")
             return
         tasks = []
         for vc in range(version_code_start, version_code_end + 1):
