@@ -62,8 +62,11 @@ def parse_protobuf_message(message_data):
     
 # Helper function to check if the token is valid using the OAuth endpoint
 async def test_auth_token(session):
+    headers = {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+}
     url = f"https://oauth2.googleapis.com/tokeninfo?access_token={auth_token}"
-    async with session.get(url) as response:
+    async with session.get(url, headers) as response:
         response_content = await response.text()  # Read response content
         print(f"Response status: {response.status}")
         
