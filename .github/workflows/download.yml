@@ -26,13 +26,15 @@ jobs:
           AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}  # Inject GitHub secret
         run: |
           python download.py
+        continue-on-error: false  # Stop the workflow if this step fails
 
       - name: Increment version codes in download.py
+        if: success()  # Only run if the previous step succeeds
         run: |
           python increment.py
 
       - name: Commit and push changes
-        if: success()  # Only run this step if the previous steps were successful
+        if: success()  # Only run if the previous steps were successful
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
@@ -44,6 +46,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
       - name: Trigger workflow on main branch
+        if: success()  # Only run if the previous steps were successful
         run: |
           curl -X POST \
             -H "Accept: application/vnd.github.v3+json" \
