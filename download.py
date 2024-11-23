@@ -60,34 +60,36 @@ def parse_protobuf_message(message_data):
         print("Failed to decode Protobuf message:", e)
         return None
     
-# Helper function to check if the token is valid using the OAuth endpoint
-async def test_auth_token(session):
-    headers = {
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-}
-    url = f"https://oauth2.googleapis.com/tokeninfo?access_token={auth_token}"
-    async with session.get(url, headers) as response:
-        response_content = await response.text()  # Read response content
-        print(f"Response status: {response.status}")
-        
-        # Log response content safely
-        if response.status == 200:
-            print("Auth token is valid.")
-            print("Response content:", response_content)
-            return True
-        elif response.status == 400:  # Invalid token
-            print("Token validation failed. Response content:", response_content)
-            try:
-                response_data = await response.json()
-                if response_data.get("error") == "invalid_token":
-                    print("Error: Auth token is invalid or expired.")
+async def test_auth_token():
+    # URL-encode the token
+    encoded_token = quote(auth_token)
+    url = f"https://oauth2.googleapis.com/tokeninfo?access_token={encoded_token}"
+    print(f"Testing token with URL: {url}")
+
+    # Define custom headers
+    custom_headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    }
+
+    async with aiohttp.ClientSession() as session:
+        try:
+            # Pass custom headers as a keyword argument
+            async with session.get(url, headers=custom_headers) as response:
+                response_content = await response.text()
+                print(f"Response status: {response.status}")
+                print(f"Response content: {response_content}")
+
+                if response.status == 200:
+                    print("Auth token is valid.")
+                    return True
+                elif response.status == 400:
+                    print("Invalid token. Stopping script.")
                     return False
-            except Exception as e:
-                print(f"Error parsing JSON: {e}")
-                return False
-        else:
-            print(f"Unexpected status code during token validation: {response.status}")
-            print("Response content:", response_content)
+                else:
+                    print("Unexpected status code or error.")
+                    return False
+        except Exception as e:
+            print(f"An error occurred during token validation: {e}")
             return False
 
 # Async function to handle each request with retry logic
