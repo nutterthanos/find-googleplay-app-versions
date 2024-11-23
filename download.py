@@ -65,7 +65,7 @@ async def test_auth_token(session):
     url = f"https://oauth2.googleapis.com/tokeninfo?access_token={auth_token}"
     async with session.get(url) as response:
         print (f"response headers {response.headers}")
-        print (f"response headers {response.content}")
+        print (f"response headers {response}")
         if response.status == 200:
             print("Auth token is valid.")
             return True
