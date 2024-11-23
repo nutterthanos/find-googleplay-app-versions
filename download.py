@@ -64,21 +64,27 @@ def parse_protobuf_message(message_data):
 async def test_auth_token(session):
     url = f"https://oauth2.googleapis.com/tokeninfo?access_token={auth_token}"
     async with session.get(url) as response:
-        print (f"response headers {response.headers}")
-        print (f"response headers {response}")
+        response_content = await response.text()  # Read response content
+        print(f"Response status: {response.status}")
+        
+        # Log response content safely
         if response.status == 200:
             print("Auth token is valid.")
+            print("Response content:", response_content)
             return True
-        elif response.status == 400:  # Handle invalid token response
-            response_data = await response.json()
-            if response_data.get("error") == "invalid_token":
-                print("Error: Auth token is invalid or expired.")
-                return False
-            else:
-                print("Unexpected response while validating auth token:", response_data)
+        elif response.status == 400:  # Invalid token
+            print("Token validation failed. Response content:", response_content)
+            try:
+                response_data = await response.json()
+                if response_data.get("error") == "invalid_token":
+                    print("Error: Auth token is invalid or expired.")
+                    return False
+            except Exception as e:
+                print(f"Error parsing JSON: {e}")
                 return False
         else:
             print(f"Unexpected status code during token validation: {response.status}")
+            print("Response content:", response_content)
             return False
 
 # Async function to handle each request with retry logic
