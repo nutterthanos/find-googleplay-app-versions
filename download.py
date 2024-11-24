@@ -156,7 +156,7 @@ async def main():
 
     version_code_start = 0
     version_code_end = 500000
-    max_concurrent_requests = 100
+    max_concurrent_requests = 5
     semaphore = asyncio.Semaphore(max_concurrent_requests)
 
     # Timeout for the ClientSession to handle long response times
