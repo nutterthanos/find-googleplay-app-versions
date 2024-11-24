@@ -66,20 +66,28 @@ async def test_auth_token(session):
     encoded_token = quote(auth_token)
     url = f"https://oauth2.googleapis.com/tokeninfo?access_token={encoded_token}"
     print(f"Testing token with URL: {url}")
-    custom_headers = {"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"}
-    async with session.get(url, headers=custom_headers) as response:
-        response_content = await response.text()
-        print(f"Response status: {response.status}")
-        print(f"Response content: {response_content}")
-        if response.status == 200:
-            print("Auth token is valid.")
-            return True
-        elif response.status == 400:
-            print("Invalid token. Stopping script.")
-            return False
-        else:
-            print("Unexpected status code or error.")
-            return False
+    
+    # Add custom User-Agent to existing headers
+    custom_headers = headers.copy()
+    custom_headers["User-Agent"] = "Mozilla/5.0"
+
+    try:
+        async with session.get(url, headers=custom_headers) as response:
+            response_content = await response.text()
+            print(f"Response status: {response.status}")
+            print(f"Response content: {response_content}")
+            if response.status == 200:
+                print("Auth token is valid.")
+                return True
+            elif response.status == 400:
+                print("Invalid token. Stopping script.")
+                return False
+            else:
+                print("Unexpected status code or error.")
+                return False
+    except Exception as e:
+        print(f"An error occurred during token validation: {e}")
+        return False
 
 # Async function to handle each request with retry logic
 async def fetch_and_save(session, url, vc, semaphore):
