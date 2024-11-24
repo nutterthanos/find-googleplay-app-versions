@@ -132,15 +132,11 @@ async def fetch_and_save(session, url, vc, semaphore):
                             print(f"Version code {vc} response does not contain an HTTP/HTTPS URL, not saving.")
                         return  # Exit the function if request is successful
 
-                    elif 500 <= response.status < 600:
-                        # Retry for 50x errors
+                    elif 400 <= response.status < 600:
+                        # Retry for 4xx/50x errors
                         retries += 1
                         print(f"Request failed with status {response.status} for version code {vc}, retrying {retries}/{max_retries}...")
                         await asyncio.sleep(retry_delay)
-                    else:
-                        # Handle non-50x errors (do not retry)
-                        print(f"Request failed for version code {vc} with status {response.status}, not retrying.")
-                        return
 
             except aiohttp.ClientOSError as e:
                 # Retry on ClientOSError
