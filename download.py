@@ -7,6 +7,7 @@ import response_pb2  # This is the compiled Protobuf file
 import re
 import os
 import sys
+from urllib.parse import quote
 
 # Replace these with your actual values
 app_id = "com.amadeus.merci.client.ui"
@@ -60,36 +61,24 @@ def parse_protobuf_message(message_data):
         print("Failed to decode Protobuf message:", e)
         return None
     
-async def test_auth_token():
-    # URL-encode the token
+# Fix: Adjust `test_auth_token` to accept session
+async def test_auth_token(session):
     encoded_token = quote(auth_token)
     url = f"https://oauth2.googleapis.com/tokeninfo?access_token={encoded_token}"
     print(f"Testing token with URL: {url}")
-
-    # Define custom headers
-    custom_headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-    }
-
-    async with aiohttp.ClientSession() as session:
-        try:
-            # Pass custom headers as a keyword argument
-            async with session.get(url, headers=custom_headers) as response:
-                response_content = await response.text()
-                print(f"Response status: {response.status}")
-                print(f"Response content: {response_content}")
-
-                if response.status == 200:
-                    print("Auth token is valid.")
-                    return True
-                elif response.status == 400:
-                    print("Invalid token. Stopping script.")
-                    return False
-                else:
-                    print("Unexpected status code or error.")
-                    return False
-        except Exception as e:
-            print(f"An error occurred during token validation: {e}")
+    custom_headers = {"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"}
+    async with session.get(url, headers=custom_headers) as response:
+        response_content = await response.text()
+        print(f"Response status: {response.status}")
+        print(f"Response content: {response_content}")
+        if response.status == 200:
+            print("Auth token is valid.")
+            return True
+        elif response.status == 400:
+            print("Invalid token. Stopping script.")
+            return False
+        else:
+            print("Unexpected status code or error.")
             return False
 
 # Async function to handle each request with retry logic
@@ -148,14 +137,13 @@ async def main():
     version_code_end = 500000
     max_concurrent_requests = 1000
     semaphore = asyncio.Semaphore(max_concurrent_requests)
-
-    # Timeout for the ClientSession to handle long response times
     timeout = aiohttp.ClientTimeout(total=30)  # 30 seconds
-
     async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
         if not await test_auth_token(session):
             print("Error: The auth token might have expired or is invalid. Exiting.")
             sys.exit(1)  # Exit with code 1 to signal failure
+        print("Auth token validated. Proceeding...")
+        
         tasks = []
         for vc in range(version_code_start, version_code_end + 1):
             url = f"https://play-fe.googleapis.com/fdfe/delivery?doc={app_id}&ot=1&vc={vc}"
