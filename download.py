@@ -69,7 +69,7 @@ async def test_auth_token(session):
     
     # Add custom User-Agent to existing headers
     custom_headers = headers.copy()
-    custom_headers["User-Agent"] = "Mozilla/5.0"
+    custom_headers["User-Agent"] = ""Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36""
 
     try:
         async with session.get(url, headers=custom_headers) as response:
