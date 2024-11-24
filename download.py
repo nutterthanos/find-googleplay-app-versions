@@ -9,6 +9,7 @@ import os
 import sys
 from urllib.parse import quote
 import json
+import requests
 
 # Replace these with your actual values
 app_id = "com.amadeus.merci.client.ui"
