@@ -8,6 +8,7 @@ import re
 import os
 import sys
 from urllib.parse import quote
+import json
 
 # Replace these with your actual values
 app_id = "com.amadeus.merci.client.ui"
@@ -61,30 +62,40 @@ def parse_protobuf_message(message_data):
         print("Failed to decode Protobuf message:", e)
         return None
     
-# Fix: Adjust `test_auth_token` to accept session
-async def test_auth_token(session):
+import requests
+from urllib.parse import quote
+
+# Helper function to check if the token is valid using the OAuth endpoint
+def test_auth_token():
     encoded_token = quote(auth_token)
     url = f"https://oauth2.googleapis.com/tokeninfo?access_token={encoded_token}"
     print(f"Testing token with URL: {url}")
-    
-    # Add custom User-Agent to existing headers
-    custom_headers = headers.copy()
-    custom_headers["User-Agent"] = ""Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36""
+
+    # Define custom headers
+    custom_headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    }
 
     try:
-        async with session.get(url, headers=custom_headers) as response:
-            response_content = await response.text()
-            print(f"Response status: {response.status}")
-            print(f"Response content: {response_content}")
-            if response.status == 200:
-                print("Auth token is valid.")
-                return True
-            elif response.status == 400:
-                print("Invalid token. Stopping script.")
+        # Make a GET request
+        response = requests.get(url, headers=custom_headers)
+        print(f"Response status: {response.status_code}")
+        print(f"Response content: {response.text}")
+
+        if response.status_code == 200:
+            print("Auth token is valid.")
+            return True
+        elif response.status_code == 400:
+            response_data = response.json()
+            if response_data.get("error") == "invalid_token":
+                print("Error: Auth token is invalid or expired.")
                 return False
             else:
-                print("Unexpected status code or error.")
+                print("Unexpected response:", response_data)
                 return False
+        else:
+            print(f"Unexpected status code during token validation: {response.status_code}")
+            return False
     except Exception as e:
         print(f"An error occurred during token validation: {e}")
         return False
@@ -141,17 +152,21 @@ async def fetch_and_save(session, url, vc, semaphore):
 
 # Main async function
 async def main():
+    # Validate the auth token synchronously before proceeding
+    if not test_auth_token():
+        print("Error: The auth token might have expired or is invalid. Exiting.")
+        sys.exit(1)  # Exit with code 1 to signal failure
+
     version_code_start = 0
     version_code_end = 500000
-    max_concurrent_requests = 1000
+    max_concurrent_requests = 100
     semaphore = asyncio.Semaphore(max_concurrent_requests)
+
+    # Timeout for the ClientSession to handle long response times
     timeout = aiohttp.ClientTimeout(total=30)  # 30 seconds
+
     async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
-        if not await test_auth_token(session):
-            print("Error: The auth token might have expired or is invalid. Exiting.")
-            sys.exit(1)  # Exit with code 1 to signal failure
         print("Auth token validated. Proceeding...")
-        
         tasks = []
         for vc in range(version_code_start, version_code_end + 1):
             url = f"https://play-fe.googleapis.com/fdfe/delivery?doc={app_id}&ot=1&vc={vc}"
