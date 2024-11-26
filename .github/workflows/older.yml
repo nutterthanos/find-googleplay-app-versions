@@ -1,7 +1,12 @@
-name: Run download.py with incremented version codes
+name: Run download.py with incremented version codes on older branch
 
 on:
   workflow_dispatch:  # Manually trigger the workflow in GitHub Actions
+    inputs:
+      branch:
+        description: "Branch to run the workflow on"
+        default: "older"
+        required: true
 
 jobs:
   run_download:
@@ -10,6 +15,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.branch }}  # Check out the specified branch
 
       - name: Set up Python
         uses: actions/setup-python@v2
@@ -41,17 +48,17 @@ jobs:
           git pull
           git add .
           git commit -m "Updated versions as of $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
-          git push origin main
+          git push origin ${{ github.event.inputs.branch }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
-      - name: Trigger workflow on main branch
+      - name: Trigger workflow on branch
         if: success()  # Only run if the previous steps were successful
         run: |
           curl -X POST \
             -H "Accept: application/vnd.github.v3+json" \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            https://api.github.com/repos/${{ github.repository }}/actions/workflows/download.yml/dispatches \
-            -d '{"ref":"main"}'
+            https://api.github.com/repos/${{ github.repository }}/actions/workflows/older.yml/dispatches \
+            -d '{"ref":"${{ github.event.inputs.branch }}"}'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
