@@ -7,9 +7,6 @@ import response_pb2  # This is the compiled Protobuf file
 import re
 import os
 import sys
-from urllib.parse import quote
-import json
-import requests
 
 # Replace these with your actual values
 app_id = "com.amadeus.merci.client.ui"
@@ -23,7 +20,7 @@ if not auth_token:
     sys.exit(1)
 
 # Retry configuration
-max_retries = 10000
+max_retries = 1000
 retry_delay = 2  # Seconds between retries
 
 headers = {
@@ -63,43 +60,20 @@ def parse_protobuf_message(message_data):
         print("Failed to decode Protobuf message:", e)
         return None
     
-import requests
-from urllib.parse import quote
-
-# Helper function to check if the token is valid using the OAuth endpoint
-def test_auth_token():
-    encoded_token = quote(auth_token)
-    url = f"https://oauth2.googleapis.com/tokeninfo?access_token={encoded_token}"
-    print(f"Testing token with URL: {url}")
-
-    # Define custom headers
-    custom_headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-    }
-
-    try:
-        # Make a GET request
-        response = requests.get(url, headers=custom_headers)
-        print(f"Response status: {response.status_code}")
-        print(f"Response content: {response.text}")
-
-        if response.status_code == 200:
-            print("Auth token is valid.")
-            return True
-        elif response.status_code == 400:
-            response_data = response.json()
-            if response_data.get("error") == "invalid_token":
-                print("Error: Auth token is invalid or expired.")
-                return False
+# Helper function to check if the token is valid by testing a known version
+async def test_auth_token(session):
+    url = f"https://play-fe.googleapis.com/fdfe/delivery?doc={app_id}&ot=1&vc=1"
+    async with session.get(url) as response:
+        if response.status == 200:
+            response_data = await response.read()
+            
+            # Check if the response contains an HTTP/HTTPS URL, indicating a valid response
+            if re.search(rb'https?://', response_data):
+                print("Auth token is valid.")
+                return True
             else:
-                print("Unexpected response:", response_data)
+                print("Auth token might be expired or invalid - no URL found in response.")
                 return False
-        else:
-            print(f"Unexpected status code during token validation: {response.status_code}")
-            return False
-    except Exception as e:
-        print(f"An error occurred during token validation: {e}")
-        return False
 
 # Async function to handle each request with retry logic
 async def fetch_and_save(session, url, vc, semaphore):
@@ -132,11 +106,15 @@ async def fetch_and_save(session, url, vc, semaphore):
                             print(f"Version code {vc} response does not contain an HTTP/HTTPS URL, not saving.")
                         return  # Exit the function if request is successful
 
-                    elif 400 <= response.status < 600:
-                        # Retry for 4xx/50x errors
+                    elif 500 <= response.status < 600:
+                        # Retry for 50x errors
                         retries += 1
                         print(f"Request failed with status {response.status} for version code {vc}, retrying {retries}/{max_retries}...")
                         await asyncio.sleep(retry_delay)
+                    else:
+                        # Handle non-50x errors (do not retry)
+                        print(f"Request failed for version code {vc} with status {response.status}, not retrying.")
+                        return
 
             except aiohttp.ClientOSError as e:
                 # Retry on ClientOSError
@@ -149,21 +127,18 @@ async def fetch_and_save(session, url, vc, semaphore):
 
 # Main async function
 async def main():
-    # Validate the auth token synchronously before proceeding
-    if not test_auth_token():
-        print("Error: The auth token might have expired or is invalid. Exiting.")
-        sys.exit(1)  # Exit with code 1 to signal failure
-
-    version_code_start = 0
-    version_code_end = 500000
-    max_concurrent_requests = 1
+    version_code_start = 590500000
+    version_code_end = 591000000
+    max_concurrent_requests = 100
     semaphore = asyncio.Semaphore(max_concurrent_requests)
 
     # Timeout for the ClientSession to handle long response times
     timeout = aiohttp.ClientTimeout(total=30)  # 30 seconds
 
     async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
-        print("Auth token validated. Proceeding...")
+        if not await test_auth_token(session):
+            print("Error: The auth token might have expired. Exiting.")
+            return
         tasks = []
         for vc in range(version_code_start, version_code_end + 1):
             url = f"https://play-fe.googleapis.com/fdfe/delivery?doc={app_id}&ot=1&vc={vc}"
@@ -171,10 +146,4 @@ async def main():
         await asyncio.gather(*tasks)
 
 # Run the async main function
-try:
-    asyncio.run(main())
-except SystemExit as e:
-    sys.exit(e.code)  # Ensure exit code is propagated
-except Exception as e:
-    print(f"Unexpected error occurred: {e}")
-    sys.exit(1)  # Exit with code 1 for unexpected errors
+asyncio.run(main())
