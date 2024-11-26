@@ -23,7 +23,7 @@ if not auth_token:
     sys.exit(1)
 
 # Retry configuration
-max_retries = 1000
+max_retries = 10000
 retry_delay = 2  # Seconds between retries
 
 headers = {
@@ -156,7 +156,7 @@ async def main():
 
     version_code_start = 0
     version_code_end = 500000
-    max_concurrent_requests = 5
+    max_concurrent_requests = 1
     semaphore = asyncio.Semaphore(max_concurrent_requests)
 
     # Timeout for the ClientSession to handle long response times
