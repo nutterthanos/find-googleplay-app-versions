@@ -1,4 +1,4 @@
-name: Run download.py with incremented version codes
+name: Run download.py with incremented version codes on main
 
 on:
   workflow_dispatch:  # Manually trigger the workflow in GitHub Actions
