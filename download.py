@@ -129,7 +129,7 @@ async def fetch_and_save(session, url, vc, semaphore):
 async def main():
     version_code_start = 590500000
     version_code_end = 591000000
-    max_concurrent_requests = 10000
+    max_concurrent_requests = 250
     semaphore = asyncio.Semaphore(max_concurrent_requests)
 
     # Timeout for the ClientSession to handle long response times
