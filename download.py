@@ -62,7 +62,7 @@ def parse_protobuf_message(message_data):
     
 # Helper function to check if the token is valid by testing a known version
 async def test_auth_token(session):
-    url = f"https://play-fe.googleapis.com/fdfe/delivery?doc={app_id}&ot=1&vc=1"
+    url = f"https://play-fe.googleapis.com/fdfe/delivery?doc={app_id}&ot=1&vc=1000000"
     async with session.get(url) as response:
         if response.status == 200:
             response_data = await response.read()
