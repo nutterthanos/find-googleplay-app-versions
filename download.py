@@ -9,7 +9,7 @@ import os
 import sys
 
 # Replace these with your actual values
-app_id = "air.au.com.ontherun"
+app_id = "com.amadeus.merci.client.ui"
 auth_token = os.getenv("AUTH_TOKEN")
 output_dir = os.path.join("apps", app_id)
 os.makedirs(output_dir, exist_ok=True)
@@ -62,7 +62,7 @@ def parse_protobuf_message(message_data):
     
 # Helper function to check if the token is valid by testing a known version
 async def test_auth_token(session):
-    url = f"https://play-fe.googleapis.com/fdfe/delivery?doc={app_id}&ot=1&vc=1000000"
+    url = f"https://play-fe.googleapis.com/fdfe/delivery?doc={app_id}&ot=1&vc=1"
     async with session.get(url) as response:
         if response.status == 200:
             response_data = await response.read()
@@ -127,8 +127,8 @@ async def fetch_and_save(session, url, vc, semaphore):
 
 # Main async function
 async def main():
-    version_code_start = 27500000
-    version_code_end = 28000000
+    version_code_start = 519500000
+    version_code_end = 524500000
     max_concurrent_requests = 100
     semaphore = asyncio.Semaphore(max_concurrent_requests)
 
