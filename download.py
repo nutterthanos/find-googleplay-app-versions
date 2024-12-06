@@ -127,8 +127,8 @@ async def fetch_and_save(session, url, vc, semaphore):
 
 # Main async function
 async def main():
-    version_code_start = 850500000
-    version_code_end = 851000000
+    version_code_start = 851000000
+    version_code_end = 851500000
     max_concurrent_requests = 100
     semaphore = asyncio.Semaphore(max_concurrent_requests)
 
